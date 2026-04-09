@@ -5,7 +5,7 @@ from openai import OpenAI
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("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"))
 
 def generate_content(prompt):
     try:
@@ -37,22 +37,22 @@ def ask_ai(command):
                 {
                     "role": "system",
                     "content": """
-You are Duckie AI.
+                    You are Duckie AI.
 
-Available tools:
-- open_website(url)
-- search_google(query)
-- open_first_result()
+                    Available tools:
+                    - open_website(url)
+                    - search_google(query)
+                    - open_first_result()
 
-Convert user command into steps.
+                    Convert user command into steps.
 
-Respond ONLY in JSON:
-{
-  "steps": [
-    {"tool": "tool_name", "input": "value"}
-  ]
-}
-"""
+                    Respond ONLY in JSON:
+                    {
+                    "steps": [
+                        {"tool": "tool_name", "input": "value"}
+                    ]
+                    }
+                    """
                 },
                 {
                     "role": "user",
