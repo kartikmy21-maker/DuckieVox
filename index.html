@@ -170,8 +170,8 @@
 
         <div style="margin-top: 30px;">
             <p style="font-size: 12px; color: var(--text-light); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Operator</p>
-            <p style="font-weight: 600; font-size: 15px;">Dhairya Poojara</p>
-            <p style="font-size: 13px; color: var(--text-light); margin-top: 4px;">ID: KU2507U0161</p>
+            <p style="font-weight: 600; font-size: 15px;">Team Quack</p>
+            <p style="font-size: 13px; color: var(--text-light); margin-top: 4px;">To be or not to be</p>
         </div>
 
         <div style="margin-top: auto;">
@@ -182,40 +182,73 @@
     <main class="chat-container">
         <div id="chat-window">
             <div class="bubble duckie-bubble">
-                Hello Dhairya. I'm ready to help you with your task automation. What are we working on?
+                Hello, team Quack. I'm ready to help you with your task automation. What are we working on?
             </div>
         </div>
 
         <div class="input-bar">
             <input type="text" id="user-input" placeholder="Type your command..." onkeypress="handleEnter(event)">
-            <button class="btn btn-mic">🎤</button>
+            <button class="btn btn-mic" onclick="startVoice()">🎤</button>
             <button class="btn btn-send" onclick="sendCommand()">EXECUTE</button>
         </div>
     </main>
 
-    <script>
-        function sendCommand() {
-            const input = document.getElementById('user-input');
-            const win = document.getElementById('chat-window');
+<script>
+    function sendCommand() {
+        const input = document.getElementById('user-input');
+        const win = document.getElementById('chat-window');
 
-            if (!input.value) return;
+        if (!input.value) return;
 
-            win.innerHTML += `<div class="bubble user-bubble">${input.value}</div>`;
-            
-            const val = input.value;
-            input.value = "";
+        win.innerHTML += `<div class="bubble user-bubble">${input.value}</div>`;
+        
+        const val = input.value;
+        input.value = "";
 
-            fetch('/execute', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ command: val })
-            })
-            .then(res => res.json())
-            .then(data => {
-                win.innerHTML += `<div class="bubble duckie-bubble">🦆 ${data.message}</div>`;
-                win.scrollTop = win.scrollHeight;
+        fetch('/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: val })
+        })
+        .then(res => res.json())
+        .then(data => {
+            win.innerHTML += `<div class="bubble duckie-bubble">🦆 ${data.message}</div>`;
+            win.scrollTop = win.scrollHeight;
+        });
+    }
+
+    // 🎤 VOICE FUNCTION (THIS WAS MISSING)
+    async function startVoice() {
+        const win = document.getElementById('chat-window');
+
+        win.innerHTML += `<div class="bubble duckie-bubble">🎤 Listening...</div>`;
+        win.scrollTop = win.scrollHeight;
+
+        try {
+            const res = await fetch('/voice', {
+                method: 'POST'
             });
+
+            const data = await res.json();
+
+            if (data.status === "success") {
+                win.innerHTML += `<div class="bubble user-bubble">${data.command}</div>`;
+                win.innerHTML += `<div class="bubble duckie-bubble">🦆 ${data.message}</div>`;
+            } else {
+                win.innerHTML += `<div class="bubble duckie-bubble">❌ ${data.message}</div>`;
+            }
+
+        } catch (err) {
+            win.innerHTML += `<div class="bubble duckie-bubble">❌ Voice error</div>`;
         }
-    </script>
+
+        win.scrollTop = win.scrollHeight;
+    }
+    function handleEnter(event) {
+        if (event.key === "Enter") {
+            sendCommand();
+        }
+    }
+</script>
 </body>
 </html>
