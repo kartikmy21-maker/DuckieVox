@@ -6,7 +6,7 @@ import whisper
 import numpy as np
 import tempfile
 import sounddevice as sd
-# 🛑 CHECK THIS LINE: 'write' hona chahiye, 'cite' nahi
+
 from scipy.io.wavfile import write 
 
 app = Flask(__name__)

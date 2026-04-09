@@ -3,6 +3,61 @@ import urllib.parse
 import pyautogui
 import time
 import webbrowser
+import os
+
+def open_file_by_name(filename):
+    try:
+        folders = [
+            os.path.expanduser("~/Documents"),
+            os.path.expanduser("~/Desktop"),
+            os.path.expanduser("~/Downloads")
+        ]
+
+        filename = filename.lower()
+
+        for folder in folders:
+            for root, dirs, files in os.walk(folder):
+                for file in files:
+                    if filename in file.lower():
+                        path = os.path.join(root, file)
+                        os.startfile(path)
+                        return f"Opening {file}"
+
+        return "File not found"
+
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+import subprocess
+
+def open_application(name):
+    apps = {
+        "notepad": "notepad.exe",
+        "calculator": "calc.exe",
+        "chrome": "chrome.exe",
+        "vscode": "code"
+    }
+
+    app = apps.get(name.lower())
+
+    if not app:
+        return f"App {name} not found"
+
+    try:
+        subprocess.Popen(app)
+        return f"Opening {name}"
+    except Exception as e:
+        return f"Error opening {name}: {str(e)}"
+    
+def type_text(text):
+    import pyautogui
+    pyautogui.write(text, interval=0.01)
+    return "Typed text"
+
+def press_keys(keys):
+    import pyautogui
+    pyautogui.hotkey(*keys.split("+"))
+    return f"Pressed {keys}"
 
 def post_on_linkedin(content):
     """
