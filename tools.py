@@ -4,38 +4,115 @@ import pyautogui
 import time
 import os
 import subprocess
+from memory import save_file_path, get_file_path, search_file_paths, forget_file_path
 
 # Global flag to track the latest launched app so type_text can securely grab focus
 last_opened_app_title = ""
 last_search_query = ""
 
-# 🔥 OPEN FILE (SMART SEARCH)
+
+def _do_open(full_path, nickname):
+    """Internal helper: open a file and update memory + global state."""
+    global last_opened_app_title
+    f = os.path.basename(full_path)
+    ext = os.path.splitext(full_path)[1].upper().lstrip(".")
+    last_opened_app_title = os.path.splitext(f)[0].lower()
+    os.startfile(full_path)
+    save_file_path(nickname, full_path)   # 🧠 remember for next time
+    return f"Opening {f} ({ext or 'file'})"
+
+
+# 🔥 OPEN ANY FILE (UNIVERSAL - PNG, MP3, MKV, PDF, etc.)
+# Memory-first: checks DB cache → user folders → all drives
 def open_file_by_name(name):
     global last_opened_app_title
-    folders = [
-        os.path.expanduser("~/Documents"),
+
+    name = name.strip()
+    name_lower = name.lower()
+
+    # ─── 0. Direct absolute path ─────────────────────────────────────────────
+    if os.path.isabs(name) and os.path.exists(name):
+        return _do_open(name, name_lower)
+
+    # ─── 1. EXACT memory hit ─────────────────────────────────────────────────
+    cached = get_file_path(name_lower)
+    if cached:
+        if os.path.exists(cached):
+            print(f"🧠 Memory hit (exact): {name_lower} → {cached}")
+            try:
+                return _do_open(cached, name_lower)
+            except Exception as e:
+                pass  # fall through to search
+        else:
+            # File moved/deleted — remove stale entry
+            forget_file_path(name_lower)
+            print(f"🗑️ Removed stale memory: {name_lower}")
+
+    # ─── 2. FUZZY memory hit ─────────────────────────────────────────────────
+    fuzzy_results = search_file_paths(name_lower)
+    for nick, fpath, fname in fuzzy_results:
+        if os.path.exists(fpath):
+            print(f"🧠 Memory hit (fuzzy): '{name_lower}' matched '{fname}' → {fpath}")
+            try:
+                return _do_open(fpath, name_lower)  # also save under new nickname
+            except Exception:
+                pass
+        else:
+            forget_file_path(nick)  # clean stale entry
+
+    # ─── 3. Priority folder search (user home dirs) ───────────────────────────
+    priority_folders = [
         os.path.expanduser("~/Desktop"),
-        os.path.expanduser("~/Downloads")
+        os.path.expanduser("~/Downloads"),
+        os.path.expanduser("~/Documents"),
+        os.path.expanduser("~/Pictures"),
+        os.path.expanduser("~/Music"),
+        os.path.expanduser("~/Videos"),
     ]
 
-    name = name.lower()
-
-    for folder in folders:
+    for folder in priority_folders:
+        if not os.path.exists(folder):
+            continue
         for root, dirs, files in os.walk(folder):
-            # Check folders first
-            for d in dirs:
-                if name in d.lower():
-                    last_opened_app_title = name
-                    os.startfile(os.path.join(root, d))
-                    return f"Opening folder {d}"
-            # Check files
+            dirs[:] = [d for d in dirs if not d.startswith('.')
+                       and d not in ('$RECYCLE.BIN', 'System Volume Information')]
             for f in files:
-                if name in f.lower():
-                    last_opened_app_title = name
-                    os.startfile(os.path.join(root, f))
-                    return f"Opening {f}"
+                if name_lower in f.lower():
+                    full_path = os.path.join(root, f)
+                    try:
+                        return _do_open(full_path, name_lower)
+                    except Exception as e:
+                        return f"Found '{f}' but couldn't open it: {e}"
+            for d in dirs:
+                if name_lower in d.lower():
+                    full_path = os.path.join(root, d)
+                    last_opened_app_title = name_lower
+                    os.startfile(full_path)
+                    save_file_path(name_lower, full_path)
+                    return f"Opening folder: {d}"
 
-    return "File or folder not found"
+    # ─── 4. Full drive-wide search (D:\, E:\, etc.) ───────────────────────────
+    import string
+    for letter in string.ascii_uppercase:
+        drive = f"{letter}:\\"
+        if not os.path.exists(drive):
+            continue
+        try:
+            result = subprocess.run(
+                f'dir /s /b "{drive}*{name_lower}*"',
+                shell=True, capture_output=True, text=True, timeout=15
+            )
+            for path in result.stdout.strip().splitlines():
+                path = path.strip()
+                if os.path.isfile(path) and name_lower in os.path.basename(path).lower():
+                    try:
+                        return _do_open(path, name_lower)
+                    except Exception as e:
+                        return f"Found '{os.path.basename(path)}' but couldn't open it: {e}"
+        except Exception:
+            continue
+
+    return f"Could not find any file matching '{name}' on any drive. Try giving the full path."
 
 
 # 🔥 OPEN APPLICATION (MORE RELIABLE)

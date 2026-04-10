@@ -1,97 +1,100 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
 from agent import decide_and_execute
-from voice import speak
+from voice import speech_to_text, speak, always_on_loop
 import threading
-import whisper
-import tempfile
-import sounddevice as sd
-from scipy.io.wavfile import write
-import os
+import queue
+import json
+import traceback
 
 app = Flask(__name__)
 
-# 🔥 Load Whisper once
-model = whisper.load_model("base")
+# ── Shared event queue (background → SSE → frontend) ─────────────────────────
+_event_queue: queue.Queue = queue.Queue(maxsize=100)
+
+def push_event(etype: str, payload):
+    """Put an event on the queue. Drops oldest if full."""
+    try:
+        _event_queue.put_nowait({"type": etype, "data": payload})
+    except queue.Full:
+        try:
+            _event_queue.get_nowait()
+            _event_queue.put_nowait({"type": etype, "data": payload})
+        except Exception:
+            pass
 
 
+# ── Start always-on listener in background ────────────────────────────────────
+def _start_listener():
+    always_on_loop(push_event)
+
+_listener_thread = threading.Thread(target=_start_listener, daemon=True, name="DuckieListener")
+_listener_thread.start()
+print("🦆 Always-on listener started.")
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
-# 🔥 TEXT COMMAND
+@app.route("/events")
+def events():
+    """SSE endpoint — streams status/command/response to frontend."""
+    def generate():
+        while True:
+            try:
+                event = _event_queue.get(timeout=25)
+                yield f"data: {json.dumps(event)}\n\n"
+            except queue.Empty:
+                yield "data: {\"type\":\"ping\"}\n\n"   # keep-alive
+    return Response(generate(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache",
+                             "X-Accel-Buffering": "no"})
+
+
 @app.route("/execute", methods=["POST"])
 def execute():
-    data = request.json
+    data    = request.json
     command = data.get("command", "").strip()
-
     if not command:
         return jsonify({"status": "error", "message": "Empty command"})
 
-    print("💬 Command:", command)
+    print("💬 Text command:", command)
+    push_event("command", command)
+    push_event("status", "thinking")
 
     response = decide_and_execute(command)
 
-    # 🔊 Speak asynchronously (non-blocking)
+    push_event("response", response)
+    push_event("status", "listening")
     threading.Thread(target=speak, args=(response,), daemon=True).start()
 
-    return jsonify({
-        "status": "success",
-        "command": command,
-        "message": response
-    })
+    return jsonify({"status": "success", "command": command, "message": response})
 
 
-# 🔥 VOICE COMMAND
 @app.route("/voice", methods=["POST"])
 def voice():
+    """Manual mic trigger (fallback — always-on is preferred)."""
     try:
-        fs = 44100
-        duration = 3  # ⚡ reduced for faster response
-
-        print("🎤 Recording...")
-
-        recording = sd.rec(int(duration * fs), samplerate=fs, channels=1)
-        sd.wait()
-
-        # 🔥 Save temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-            write(temp_file.name, fs, recording)
-
-            print("🧠 Transcribing...")
-            result = model.transcribe(temp_file.name, language="en")
-            text = result["text"].strip()
-
-        # 🔥 Clean up
-        try:
-            os.remove(temp_file.name)
-        except:
-            pass
-
+        text = speech_to_text()
         if not text:
-            return jsonify({"status": "error", "message": "Didn't catch that"})
+            return jsonify({"status": "error", "message": "Didn't catch that."})
 
-        print("🗣️ You said:", text)
+        push_event("command", text)
+        push_event("status", "thinking")
 
-        # ⚡ Execute immediately
         response = decide_and_execute(text)
 
-        # 🔊 Speak in background
+        push_event("response", response)
+        push_event("status", "listening")
         threading.Thread(target=speak, args=(response,), daemon=True).start()
 
-        return jsonify({
-            "status": "success",
-            "command": text,
-            "message": response
-        })
-
+        return jsonify({"status": "success", "command": text, "message": response})
     except Exception as e:
-        print(f"❌ Voice Error: {e}")
-        return jsonify({
-            "status": "error",
-            "message": "Voice processing failed"
-        })
+        print(f"❌ Voice Error:\n{traceback.format_exc()}")
+        return jsonify({"status": "error", "message": f"Voice failed: {str(e)}"})
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False, threaded=True)   # debug=False prevents double-thread start

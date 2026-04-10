@@ -1,161 +1,91 @@
 import json
 import ollama
+from memory import get_all_facts
 
 
-def ask_ai(command):
+def ask_ai(command, history=None):
+    # Load everything Duckie knows about the user
+    known_facts = get_all_facts()
+    memory_block = f"\n[FACTS ABOUT USER]: {known_facts}" if known_facts else ""
+    
+    # Prepare conversation context
+    history_block = ""
+    if history:
+        history_block = "\n[RECENT CONVERSATION]:\n" + "\n".join([f"{m['role']}: {m['content']}" for m in history])
+
     prompt = f"""
-You are Duckie AI, a system control assistant.
+You are Duckie AI, a friendly and conversational system control assistant.{memory_block}
+{history_block}
 
 Your job:
-Convert user commands into structured JSON steps.
+1. Chat with the user in a helpful, witty, and friendly way.
+2. Convert user commands into structured JSON steps.
 
 RULES:
-- Always return valid JSON
-- Do NOT include any explanation
-- Only return JSON
-- Never return null inputs
-- Break tasks into clear steps
+- Always return valid JSON.
+- Never return null inputs.
+- Always provide a conversational 'chat_response'.
+- Use the [FACTS ABOUT USER] to be personalized.
+- If the user asks a question, answer it in 'chat_response'.
+- If the user gives a command, plan the 'steps' AND describe what you're doing in 'chat_response'.
 
-GREETING:
-If user says:
-hello, hi, hey, good morning
-→ return:
-{{ "steps": [] }}
+REQUIRED JSON FORMAT:
+{{
+  "chat_response": "Friendly message to user",
+  "steps": [
+    {{"action": "action_name", "input": "input_value"}}
+  ]
+}}
 
 EXAMPLES:
 
-User: open notepad
+User: hello
 Output:
 {{
-  "steps": [
-    {{"action": "open_app", "input": "notepad"}}
-  ]
+  "chat_response": "Hello! I'm Duckie, your system assistant. How can I help you today?",
+  "steps": []
 }}
 
-User: open youtube
+User: open notepad and write my name is Ritul
 Output:
 {{
-  "steps": [
-    {{"action": "open_app", "input": "youtube"}}
-  ]
-}}
-
-User: open notepad and write hello
-Output:
-{{
+  "chat_response": "Sure thing! I've opened Notepad for you and typed out your name.",
   "steps": [
     {{"action": "open_app", "input": "notepad"}},
-    {{"action": "type", "input": "hello"}}
+    {{"action": "type", "input": "My name is Ritul"}}
   ]
 }}
-If the command contains "and", you MUST split it into multiple steps.
-
-Example:
-
-User: open youtube and play lofi music
-
-Output:
-{{
-  "steps": [
-    {{"action": "play_youtube", "input": "lofi music"}}
-  ]
-}}
-
-Example:
-
-User: send an email to boss about the meeting
-
-Output:
-{{
-  "steps": [
-    {{"action": "send_email", "input": {{"to": "boss", "subject": "Meeting", "body": "Hello, wanted to discuss the meeting."}}}}
-  ]
-}}
-
-Example:
-
-User: search for AI tools and open the first result
-
-Output:
-{{
-  "steps": [
-    {{"action": "open_first_result", "input": "AI tools"}}
-  ]
-}}
-
-Example:
-
-User: close notepad please
-
-Output:
-{{
-  "steps": [
-    {{"action": "close_app", "input": "notepad"}}
-  ]
-}}
-
-Example:
-
-User: forcefully kill notepad
-
-Output:
-{{
-  "steps": [
-    {{"action": "force_close_app", "input": "notepad"}}
-  ]
-}}
-
-AVAILABLE ACTIONS:
-- open_app
-- close_app
-- force_close_app
-- open_file
-- open_url
-- search
-- play_youtube
-- send_email
-- type
-- generate
-- create_file
-- write_file
-- press_keys
-- post_linkedin
-- open_first_result
 
 User command: {command}
 """
 
     for _ in range(2):  # light retry
         try:
-            response = ollama.chat(
-                model="llama3",
-                format="json",
-                messages=[
-                    {"role": "system", "content": "You must strictly return JSON under all circumstances."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
+            messages = [
+                {"role": "system", "content": "You are a specialized AI that ONLY outputs JSON."},
+                {"role": "user", "content": prompt}
+            ]
+            
+            response = ollama.chat(model="llama3", format="json", messages=messages)
 
             text = response["message"]["content"]
-            print("🧠 Llama RAW:", text)
+            print("[Brain] Llama RAW:", text)
 
-            # Extract JSON safely
-            start = text.find("{")
-            end = text.rfind("}") + 1
+            data = json.loads(text)
 
-            if start == -1 or end == -1:
-                continue
-
-            json_text = text[start:end]
-            data = json.loads(json_text)
-
-            if "steps" in data:
+            if "chat_response" in data and "steps" in data:
                 return data
+            
+            # Fallback if AI missed fields
+            return {
+                "chat_response": data.get("chat_response", "I've processed your request."),
+                "steps": data.get("steps", [])
+            }
 
         except Exception as e:
-            print("⚠️ Retry:", e)
+            print("[Warning] Retry:", e)
 
-    return {"steps": []}
+    return {"chat_response": "I'm sorry, I had a bit of trouble processing that.", "steps": []}
 
 
 def generate_content(prompt):

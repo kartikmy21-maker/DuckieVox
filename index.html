@@ -1,254 +1,586 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Duckie | Smart Workspace</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+    <title>Duckie | Always Listening</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --primary: #5D5FEF; /* Soft Purple-Blue */
-            --bg: #F3F5F9;
-            --white: #FFFFFF;
-            --text: #1A1C21;
-            --text-light: #64748B;
-            --shadow: 0 10px 25px rgba(0, 0, 0, 0.03);
-            --border: #E2E8F0;
+            --bg: #0d0f14;
+            --surface: #13151c;
+            --surface2: #1a1d26;
+            --border: rgba(255, 255, 255, 0.06);
+            --primary: #6C63FF;
+            --primary-glow: rgba(108, 99, 255, 0.35);
+            --accent: #00d4aa;
+            --accent-glow: rgba(0, 212, 170, 0.3);
+            --warn: #ff6b6b;
+            --text: #e8eaf0;
+            --text-dim: #6b7280;
+            --font: 'Inter', sans-serif;
         }
 
-        * { box-sizing: border-box; }
-        body {
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: 'Plus Jakarta Sans', sans-serif;
+        * {
+            box-sizing: border-box;
             margin: 0;
-            display: flex;
-            height: 100vh;
-            padding: 20px;
+            padding: 0;
         }
 
-        /* --- SIDEBAR --- */
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ── SIDEBAR ──────────────────────────────────────────────────── */
         .sidebar {
-            width: 300px;
-            background: var(--white);
-            border-radius: 24px;
-            padding: 40px 30px;
-            margin-right: 20px;
+            width: 260px;
+            min-width: 260px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            box-shadow: var(--shadow);
+            padding: 28px 20px;
         }
 
         .logo {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--primary);
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 50px;
+            gap: 10px;
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 32px;
         }
 
-        .badge {
-            background: #ECFDF5;
-            color: #10B981;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 6px 12px;
-            border-radius: 100px;
-            display: inline-block;
+        .logo span {
+            font-size: 28px;
+        }
+
+        /* ── LIVE STATUS ORB ─────────────────────────────────────────── */
+        .status-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
             margin-bottom: 20px;
+            text-align: center;
         }
 
-        /* --- CHAT HUB --- */
-        .chat-container {
-            flex-grow: 1;
-            background: var(--white);
-            border-radius: 24px;
+        .orb-wrap {
             display: flex;
-            flex-direction: column;
-            box-shadow: var(--shadow);
-            overflow: hidden;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .orb {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
             position: relative;
+            transition: background 0.4s ease, box-shadow 0.4s ease;
         }
 
-        #chat-window {
-            flex-grow: 1;
-            padding: 40px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+        /* States */
+        .orb.idle {
+            background: radial-gradient(circle, #2a2d3a, #1a1d26);
+            box-shadow: 0 0 0px transparent;
         }
 
-        .bubble {
-            max-width: 75%;
-            padding: 16px 22px;
-            border-radius: 18px;
-            font-size: 15px;
+        .orb.listening {
+            background: radial-gradient(circle, #3a3f6e, #1a1d26);
+            box-shadow: 0 0 20px var(--primary-glow);
+            animation: pulse-listen 2.5s ease-in-out infinite;
+        }
+
+        .orb.activated {
+            background: radial-gradient(circle, #00d4aa, #005a47);
+            box-shadow: 0 0 30px var(--accent-glow), 0 0 60px var(--accent-glow);
+            animation: pulse-wake 0.5s ease-in-out 3;
+        }
+
+        .orb.recording {
+            background: radial-gradient(circle, #ff6b6b, #7a1f1f);
+            box-shadow: 0 0 25px rgba(255, 107, 107, 0.5);
+            animation: pulse-record 0.8s ease-in-out infinite;
+        }
+
+        .orb.thinking {
+            background: radial-gradient(circle, #f59e0b, #7c4a00);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+            animation: spin-think 1.5s linear infinite;
+        }
+
+        @keyframes pulse-listen {
+
+            0%,
+            100% {
+                box-shadow: 0 0 12px var(--primary-glow);
+                transform: scale(1);
+            }
+
+            50% {
+                box-shadow: 0 0 28px var(--primary-glow);
+                transform: scale(1.05);
+            }
+        }
+
+        @keyframes pulse-wake {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.18);
+            }
+        }
+
+        @keyframes pulse-record {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes spin-think {
+            0% {
+                box-shadow: 0 0 20px rgba(245, 158, 11, 0.4) inset;
+                filter: hue-rotate(0deg);
+            }
+
+            100% {
+                filter: hue-rotate(360deg);
+            }
+        }
+
+        .orb-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 26px;
+            user-select: none;
+        }
+
+        .status-label {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            transition: color 0.3s;
+        }
+
+        .status-label.active {
+            color: var(--accent);
+        }
+
+        .status-label.recording-state {
+            color: var(--warn);
+        }
+
+        .status-label.thinking-state {
+            color: #f59e0b;
+        }
+
+        .wake-hint {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 6px;
+            line-height: 1.5;
+        }
+
+        /* ── SIDEBAR BOTTOM ─────────────────────────────────────────── */
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .sidebar-footer p {
+            font-size: 11px;
+            color: var(--text-dim);
             line-height: 1.6;
         }
 
+        /* ── MAIN CHAT ───────────────────────────────────────────────── */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .topbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .topbar-title {
+            font-weight: 600;
+            font-size: 15px;
+            color: #fff;
+        }
+
+        .topbar-badge {
+            background: rgba(108, 99, 255, 0.15);
+            border: 1px solid rgba(108, 99, 255, 0.3);
+            color: var(--primary);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* ── CHAT WINDOW ─────────────────────────────────────────────── */
+        #chat-window {
+            flex: 1;
+            overflow-y: auto;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--surface2) transparent;
+        }
+
+        #chat-window::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #chat-window::-webkit-scrollbar-thumb {
+            background: var(--surface2);
+            border-radius: 4px;
+        }
+
+        .bubble {
+            max-width: 72%;
+            padding: 14px 20px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.65;
+            animation: bubble-in 0.25s ease;
+        }
+
+        @keyframes bubble-in {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .duckie-bubble {
-            background: var(--bg);
+            background: var(--surface2);
+            border: 1px solid var(--border);
             color: var(--text);
             align-self: flex-start;
             border-bottom-left-radius: 4px;
         }
 
-        .user-bubble {
-            background: var(--primary);
-            color: white;
-            align-self: flex-end;
-            border-bottom-right-radius: 4px;
+        .duckie-bubble .sender {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
         }
 
-        /* --- INPUT BAR --- */
+        .user-bubble {
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            color: #fff;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 20px var(--primary-glow);
+        }
+
+        /* Wake word indicator bubble */
+        .wake-bubble {
+            align-self: center;
+            background: rgba(0, 212, 170, 0.1);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+            color: var(--accent);
+            padding: 8px 18px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── INPUT BAR ───────────────────────────────────────────────── */
         .input-bar {
-            padding: 30px 40px;
-            background: var(--white);
+            background: var(--surface);
             border-top: 1px solid var(--border);
+            padding: 20px 28px;
             display: flex;
-            gap: 15px;
+            gap: 12px;
             align-items: center;
         }
 
-        input {
-            flex-grow: 1;
-            background: var(--bg);
-            border: 1px solid transparent;
-            border-radius: 14px;
-            padding: 16px 20px;
-            font-family: inherit;
-            font-size: 15px;
+        input[type="text"] {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 13px 18px;
+            font-family: var(--font);
+            font-size: 14px;
+            color: var(--text);
             outline: none;
-            transition: 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        input:focus {
+        input[type="text"]:focus {
             border-color: var(--primary);
-            background: var(--white);
-            box-shadow: 0 0 0 4px rgba(93, 95, 239, 0.1);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        input[type="text"]::placeholder {
+            color: var(--text-dim);
         }
 
         .btn {
-            height: 52px;
-            padding: 0 24px;
-            border-radius: 14px;
+            height: 46px;
+            padding: 0 20px;
+            border-radius: 12px;
             border: none;
+            font-family: var(--font);
             font-weight: 600;
+            font-size: 13px;
             cursor: pointer;
-            transition: 0.2s;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
         }
 
         .btn-send {
-            background: var(--primary);
-            color: white;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            color: #fff;
+            box-shadow: 0 4px 14px var(--primary-glow);
         }
 
-        .btn-send:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(93, 95, 239, 0.3); }
+        .btn-send:hover {
+            box-shadow: 0 6px 20px var(--primary-glow);
+        }
 
         .btn-mic {
-            background: #FEE2E2;
-            color: #EF4444;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            width: 46px;
+            padding: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 52px;
+            font-size: 18px;
+        }
+
+        .btn-mic:hover {
+            border-color: var(--warn);
+            color: var(--warn);
         }
     </style>
 </head>
+
 <body>
 
+    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="logo">
             <span>🦆</span> Duckie
         </div>
-        
-        <div class="badge">● Systems Active</div>
 
-        <div style="margin-top: 30px;">
-            <p style="font-size: 12px; color: var(--text-light); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Operator</p>
-            <p style="font-weight: 600; font-size: 15px;">Team Quack</p>
-            <p style="font-size: 13px; color: var(--text-light); margin-top: 4px;">To be or not to be</p>
+        <!-- Live Status Orb -->
+        <div class="status-card">
+            <div class="orb-wrap">
+                <div class="orb listening" id="status-orb">
+                    <div class="orb-icon" id="orb-icon">🎧</div>
+                </div>
+            </div>
+            <div class="status-label" id="status-label">LISTENING</div>
+            <p class="wake-hint">Say <strong style="color:#fff">"Hey! Duckie"</strong> to wake me up</p>
         </div>
 
-        <div style="margin-top: auto;">
-            <p style="font-size: 12px; color: var(--text-light);">© 2026 Karnavati University</p>
+        <div class="sidebar-footer">
+            <p>Always-on wake word detection<br>Fuzzy accent matching enabled<br><br>© 2026 Team Quack</p>
         </div>
     </aside>
 
-    <main class="chat-container">
+    <!-- MAIN -->
+    <main class="main">
+        <div class="topbar">
+            <span class="topbar-title">Duckie Vox - Team Quack</span>
+            <div class="topbar-badge">
+                <div class="badge-dot"></div>
+                Always Listening
+            </div>
+        </div>
+
         <div id="chat-window">
             <div class="bubble duckie-bubble">
-                Hello, team Quack. I'm ready to help you with your task automation. What are we working on?
+                <div class="sender">🦆 DUCKIE</div>
+                Hello! I'm always listening for my name. Say <strong>"Hey! Duckie"</strong> followed by your command, or
+                type
+                below.
             </div>
         </div>
 
         <div class="input-bar">
-            <input type="text" id="user-input" placeholder="Type your command..." onkeypress="handleEnter(event)">
-            <button class="btn btn-mic" onclick="startVoice()">🎤</button>
-            <button class="btn btn-send" onclick="sendCommand()">EXECUTE</button>
+            <button class="btn btn-mic" id="mic-btn" onclick="manualVoice()" title="Manual mic">🎤</button>
+            <input type="text" id="user-input" placeholder='Type a command or say "Duckie, open notepad"...'
+                onkeypress="handleEnter(event)">
+            <button class="btn btn-send" onclick="sendCommand()">SEND</button>
         </div>
     </main>
 
-<script>
-    function sendCommand() {
-        const input = document.getElementById('user-input');
+    <script>
+        // ── SSE — live updates from backend ──────────────────────────────────────
+        const evtSource = new EventSource('/events');
         const win = document.getElementById('chat-window');
+        const orb = document.getElementById('status-orb');
+        const orbIcon = document.getElementById('orb-icon');
+        const statusLbl = document.getElementById('status-label');
 
-        if (!input.value) return;
+        const STATE_CONFIG = {
+            idle: { cls: 'idle', icon: '💤', label: 'IDLE', labelCls: '' },
+            listening: { cls: 'listening', icon: '🎧', label: 'LISTENING', labelCls: '' },
+            activated: { cls: 'activated', icon: '✨', label: 'DUCKIE!', labelCls: 'active' },
+            recording: { cls: 'recording', icon: '🔴', label: 'RECORDING', labelCls: 'recording-state' },
+            thinking: { cls: 'thinking', icon: '⚡', label: 'THINKING', labelCls: 'thinking-state' },
+        };
 
-        win.innerHTML += `<div class="bubble user-bubble">${input.value}</div>`;
-        
-        const val = input.value;
-        input.value = "";
+        function setStatus(state) {
+            const cfg = STATE_CONFIG[state] || STATE_CONFIG.listening;
+            orb.className = `orb ${cfg.cls}`;
+            orbIcon.textContent = cfg.icon;
+            statusLbl.textContent = cfg.label;
+            statusLbl.className = `status-label ${cfg.labelCls}`;
+        }
 
-        fetch('/execute', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command: val })
-        })
-        .then(res => res.json())
-        .then(data => {
-            win.innerHTML += `<div class="bubble duckie-bubble">🦆 ${data.message}</div>`;
+        function addBubble(html, cls) {
+            const div = document.createElement('div');
+            div.className = `bubble ${cls}`;
+            div.innerHTML = html;
+            win.appendChild(div);
             win.scrollTop = win.scrollHeight;
-        });
-    }
+        }
 
-    // 🎤 VOICE FUNCTION (THIS WAS MISSING)
-    async function startVoice() {
-        const win = document.getElementById('chat-window');
+        function addWakeBubble(text) {
+            const div = document.createElement('div');
+            div.className = 'wake-bubble';
+            div.textContent = text;
+            win.appendChild(div);
+            win.scrollTop = win.scrollHeight;
+        }
 
-        win.innerHTML += `<div class="bubble duckie-bubble">🎤 Listening...</div>`;
-        win.scrollTop = win.scrollHeight;
+        evtSource.onmessage = function (e) {
+            const evt = JSON.parse(e.data);
 
-        try {
-            const res = await fetch('/voice', {
-                method: 'POST'
-            });
+            if (evt.type === 'ping') return;
 
-            const data = await res.json();
-
-            if (data.status === "success") {
-                win.innerHTML += `<div class="bubble user-bubble">${data.command}</div>`;
-                win.innerHTML += `<div class="bubble duckie-bubble">🦆 ${data.message}</div>`;
-            } else {
-                win.innerHTML += `<div class="bubble duckie-bubble">❌ ${data.message}</div>`;
+            if (evt.type === 'status') {
+                setStatus(evt.data);
+                if (evt.data === 'activated') {
+                    addWakeBubble('✨ Wake word detected — listening for command...');
+                }
             }
 
-        } catch (err) {
-            win.innerHTML += `<div class="bubble duckie-bubble">❌ Voice error</div>`;
+            if (evt.type === 'command') {
+                addBubble(evt.data, 'user-bubble');
+            }
+
+            if (evt.type === 'response') {
+                addBubble(`<div class="sender">🦆 DUCKIE</div>${evt.data}`, 'duckie-bubble');
+            }
+        };
+
+        evtSource.onerror = function () {
+            setStatus('idle');
+            statusLbl.textContent = 'DISCONNECTED';
+        };
+
+        // ── Text command ──────────────────────────────────────────────────────────
+        function sendCommand() {
+            const input = document.getElementById('user-input');
+            const val = input.value.trim();
+            if (!val) return;
+            input.value = '';
+
+            fetch('/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: val })
+            }).catch(() => addBubble('❌ Connection error', 'duckie-bubble'));
         }
 
-        win.scrollTop = win.scrollHeight;
-    }
-    function handleEnter(event) {
-        if (event.key === "Enter") {
-            sendCommand();
+        // ── Manual mic trigger (fallback) ─────────────────────────────────────────
+        async function manualVoice() {
+            addWakeBubble('🎤 Manual mic — speak now...');
+            try {
+                const res = await fetch('/voice', { method: 'POST' });
+                const data = await res.json();
+                if (data.status !== 'success') {
+                    addBubble(`❌ ${data.message}`, 'duckie-bubble');
+                }
+            } catch {
+                addBubble('❌ Voice error', 'duckie-bubble');
+            }
         }
-    }
-</script>
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') sendCommand();
+        }
+    </script>
+
 </body>
+
 </html>
