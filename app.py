@@ -1,67 +1,52 @@
 from flask import Flask, render_template, request, jsonify
 from agent import decide_and_execute
-from voice import speak
+from voice import speech_to_text, speak
 import threading
-import whisper
-import numpy as np
-import tempfile
-import sounddevice as sd
-# 🛑 CHECK THIS LINE: 'write' hona chahiye, 'cite' nahi
-from scipy.io.wavfile import write 
+import traceback
 
 app = Flask(__name__)
-model = whisper.load_model("base")
+
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
+
+# ── TEXT COMMAND ──────────────────────────────────────────────────────────────
 @app.route("/execute", methods=["POST"])
 def execute():
-    data = request.json
-    command = data.get("command", "").lower().strip()
+    data    = request.json
+    command = data.get("command", "").strip()
+
+    if not command:
+        return jsonify({"status": "error", "message": "Empty command"})
+
+    print("💬 Command:", command)
     response = decide_and_execute(command)
-    
-    # Duckie bolega
-    threading.Thread(target=speak, args=(response,)).start()
+    threading.Thread(target=speak, args=(response,), daemon=True).start()
 
-    return jsonify({"status": "success", "message": response})
+    return jsonify({"status": "success", "command": command, "message": response})
 
+
+# ── VOICE COMMAND ─────────────────────────────────────────────────────────────
 @app.route("/voice", methods=["POST"])
 def voice():
     try:
-        fs = 44100  # Sample rate
-        duration = 4  # Seconds
-        
-        print("🎤 Recording...")
-        # Device ID None rakho taaki default mic use kare
-        recording = sd.rec(int(duration * fs), samplerate=fs, channels=1)
-        sd.wait()
-        
-        # Temp file mein save karo
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-        
-        # 🛑 YAHAN DHAYAN DO: 'write' use karna hai
-        write(temp_file.name, fs, recording) 
-        
-        # Whisper transcription
-        result = model.transcribe(temp_file.name)
-        text = result["text"].strip()
-        
+        text = speech_to_text()
+
         if not text:
-            return jsonify({"status": "error", "message": "Kuch sunayi nahi diya"})
+            return jsonify({"status": "error", "message": "Didn't catch that — please try again."})
 
+        print("🗣️ You said:", text)
         response = decide_and_execute(text)
-        threading.Thread(target=speak, args=(response,)).start()
+        threading.Thread(target=speak, args=(response,), daemon=True).start()
 
-        return jsonify({
-            "status": "success",
-            "command": text,
-            "message": response
-        })
+        return jsonify({"status": "success", "command": text, "message": response})
+
     except Exception as e:
-        print(f"❌ Error: {e}")
-        return jsonify({"status": "error", "message": str(e)})
+        print(f"❌ Voice Error:\n{traceback.format_exc()}")
+        return jsonify({"status": "error", "message": f"Voice failed: {str(e)}"})
+
 
 if __name__ == "__main__":
     app.run(debug=True)
